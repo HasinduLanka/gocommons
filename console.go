@@ -22,10 +22,13 @@ func Prompt(msg string) string {
 	return ReadLine()
 }
 
-func CheckError(err error) {
+// Return Error ? true : false
+func CheckError(err error) bool {
 	if err != nil {
-		panic(err)
+		println("Error : " + err.Error())
+		return true
 	}
+	return false
 }
 
 func PrintError(err error) {
