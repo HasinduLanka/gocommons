@@ -1,15 +1,21 @@
-package gocommons
+package uriget
 
 import (
 	"bytes"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"regexp"
+
+	"github.com/HasinduLanka/gocommons/console"
 )
 
-var regex_url *regexp.Regexp = regexp.MustCompile(`https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)`)
+var regex_url *regexp.Regexp = regexp.MustCompile("http.*")
+
+var RetryCount int = 3
+var Download_cache_dir string = "./cache/"
 
 func LoadURI(uri string) ([]byte, error) {
 	if regex_url.MatchString(uri) {
@@ -17,20 +23,67 @@ func LoadURI(uri string) ([]byte, error) {
 	} else {
 		return LoadFile(uri)
 	}
+
 }
 
-func AppendFile(filename string, content []byte) {
+func LoadURICached(uri string) ([]byte, error) {
+	if regex_url.MatchString(uri) {
+
+		filename := CachedName(uri)
+		CB, CE := LoadFile(uri)
+		if CE == nil {
+			return CB, nil
+		}
+
+		er := DownloadToFile(filename, uri)
+		if er != nil {
+			return nil, er
+		}
+
+		return LoadFile(filename)
+
+	} else {
+		return LoadFile(uri)
+	}
+}
+
+func CachedName(uri string) string {
+	filename := Download_cache_dir + ".cache-dwn-" + url.PathEscape(uri)
+	return filename
+}
+
+func InvalidateCacheURI(uri string) {
+	filename := CachedName(uri)
+	DeleteFiles(filename)
+}
+
+func AppendFile(filename string, content []byte) bool {
 	F, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, os.ModePerm)
-	CheckError(err)
+	if console.PrintError(err) {
+		return false
+	}
 	F.Write(content)
 	F.Close()
+	return true
 }
 
-func WriteFile(filename string, content []byte) {
+func WriteFile(filename string, content []byte) bool {
 	F, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY, os.ModePerm)
-	CheckError(err)
+	if console.PrintError(err) {
+		return false
+	}
 	F.Write(content)
 	F.Close()
+
+	return true
+}
+
+func LoadFileToIOReader(filename string) (io.ReadCloser, error) {
+	file, err := os.Open(filename)
+	if console.PrintError(err) {
+		return nil, err
+	}
+	return file, nil
 }
 
 func MakeDir(name string) {
@@ -43,6 +96,11 @@ func DeleteFiles(name string) {
 
 func LoadURIToString(uri string) (string, error) {
 	B, err := LoadURI(uri)
+	return string(B), err
+}
+
+func LoadURIToStringCached(uri string) (string, error) {
+	B, err := LoadURICached(uri)
 	return string(B), err
 }
 
@@ -72,30 +130,40 @@ func DownloadToFile(filepath string, url string) error {
 
 	// Write the body to file
 	_, err = io.Copy(out, body)
-	CheckError(body.Close())
+	console.PrintError(body.Close())
 	return err
 }
 
 func DownloadFileToStream(url string) (io.ReadCloser, error) {
+	return DownloadFileToStreamRetry(url, RetryCount)
+}
+
+func DownloadFileToStreamRetry(url string, retry int) (io.ReadCloser, error) {
 
 	// Get the data
 	resp, err := http.Get(url)
 	if err != nil {
+		if retry > 0 {
+			return DownloadFileToStreamRetry(url, retry-1)
+		}
 		return nil, err
 	}
-	// defer resp.Body.Close()
 
 	return resp.Body, nil
 }
 
 func DownloadFileToBytes(url string) ([]byte, error) {
+	console.Print("GET " + url)
 	str, err := DownloadFileToStream(url)
 
 	if err != nil {
 		return nil, err
 	}
 	out := StreamToByte(str)
-	CheckError(str.Close())
+	closeerr := str.Close()
+	if console.PrintError(closeerr) {
+		return nil, closeerr
+	}
 	return out, nil
 }
 
@@ -106,7 +174,10 @@ func DownloadFileToString(url string) (string, error) {
 		return "", err
 	}
 	out := StreamToString(str)
-	CheckError(str.Close())
+	closeerr := str.Close()
+	if console.PrintError(closeerr) {
+		return "", closeerr
+	}
 	return out, nil
 }
 

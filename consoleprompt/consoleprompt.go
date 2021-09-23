@@ -1,11 +1,13 @@
-package gocommons
+package consoleprompt
 
 import (
 	"fmt"
 	"strings"
+
+	"github.com/HasinduLanka/gocommons/console"
 )
 
-var NoConsole bool = true
+var NoConsole bool = false
 
 func ReadLine() string {
 	var s string
@@ -18,29 +20,14 @@ func ReadLine() string {
 }
 
 func Prompt(msg string) string {
-	print(msg)
+	console.Print(msg)
 	return ReadLine()
 }
 
-// Return Error ? true : false
-func CheckError(err error) bool {
-	if err != nil {
-		println("Error : " + err.Error())
-		return true
-	}
-	return false
-}
-
-func PrintError(err error) {
-	if err != nil {
-		println(err.Error())
-	}
-}
-
 func PromptOptions(msg string, options map[string]string) string {
-	println(msg)
+	console.Print(msg)
 	for o, m := range options {
-		println("\t[" + o + "] = " + m)
+		console.Print("\t[" + o + "] = " + m)
 	}
 
 	var r string = ""
@@ -58,7 +45,7 @@ func PromptOptions(msg string, options map[string]string) string {
 	if ok {
 		return r
 	} else {
-		println("Sorry, I didn't get that. Please enter the [option] you want ")
+		console.Print("Sorry, I didn't get that. Please enter the [option] you want ")
 		return PromptOptions(msg, options)
 	}
 
