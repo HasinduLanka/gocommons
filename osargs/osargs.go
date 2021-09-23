@@ -7,7 +7,7 @@ import (
 
 // Map command line arguments in form of
 //
-// 'myprog hello --foo bar -voo --help  --output path/to/file'
+// 'myprog hello --foo bar -voo --help --output path/to/file'
 //
 // to a map[string]string in the form of
 //
@@ -15,7 +15,18 @@ import (
 //
 func OSArgsToMap() map[string]string {
 
-	oa := os.Args
+	return ArgsToMap(os.Args)
+}
+
+// Map array of arguments in form of
+//
+// [hello, --foo, bar, -voo, --help, --output, path/to/file]
+//
+// to a map[string]string in the form of
+//
+// { "myprog":"", "hello":"", "foo":"bar -voo", "help":"", "output":"path/to/file" }
+//
+func ArgsToMap(oa []string) map[string]string {
 
 	args := make(map[string]string)
 	for i := 0; i < len(oa); i++ {
