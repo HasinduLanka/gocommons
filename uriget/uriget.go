@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"strings"
 
 	"github.com/HasinduLanka/gocommons/console"
 )
@@ -88,6 +89,38 @@ func LoadFileToIOReader(filename string) (io.ReadCloser, error) {
 
 func MakeDir(name string) {
 	os.MkdirAll(name, os.ModePerm)
+}
+
+func ListFiles(dir string, recursive bool) []string {
+
+	if len(dir) == 0 {
+		dir = "."
+	}
+
+	dir = strings.TrimSuffix(dir, "/")
+
+	return listFiles(dir, recursive)
+}
+
+func listFiles(dir string, recursive bool) []string {
+	files, err := os.ReadDir(dir)
+	if err != nil {
+		console.PrintError(err)
+	}
+
+	var fileList []string = make([]string, 0, len(files))
+
+	for _, f := range files {
+		if f.Type().IsDir() {
+			if recursive {
+				fileList = append(fileList, listFiles(dir+"/"+f.Name(), recursive)...)
+			}
+		} else {
+			fileList = append(fileList, dir+"/"+f.Name())
+		}
+	}
+
+	return fileList
 }
 
 func DeleteFiles(name string) {
